@@ -15,43 +15,43 @@ module.exports = async (req, res) => {
     }
 
     const cleanMime = (mimeType || "audio/mp4").split(";")[0];
-    const targetDialect = dialect === "Cantonese" ? "Cantonese" : "Mandarin";
+    const targetDialect = dialect === "Cantonese" ? "Hong Kong Cantonese (Traditional Chinese)" : "Mandarin (Simplified Chinese)";
 
-    const prompt = `Listen to this audio carefully.
-1. Detect whether the speaker is speaking Tamil or Chinese (Mandarin/Cantonese).
-2. Transcribe what they said accurately in the original script.
-3. If they spoke Tamil, translate it to natural ${targetDialect} (${targetDialect === "Cantonese" ? "Traditional Chinese / Hong Kong Cantonese" : "Simplified Chinese"}).
-4. If they spoke Chinese, translate it to natural spoken Tamil.
-Return ONLY valid JSON in this exact format:
-{"detected": "ta" or "zh", "original": "transcribed text", "translated": "translated text"}`;
+    const prompt = `Detect if audio is Tamil or Chinese. Transcribe accurately. If Tamil, translate to natural ${targetDialect}. If Chinese, translate to natural spoken Tamil. Return ONLY JSON: {"detected":"ta"|"zh","original":"...","translated":"..."}`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: prompt },
-                { inline_data: { mime_type: cleanMime, data: audio } }
-              ]
-            }
-          ],
-          generationConfig: { responseMimeType: "application/json" }
-        })
+    const models = ["gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-2.5-flash-lite"];
+    let lastError = "Translation failed";
+
+    for (const model of models) {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  { inline_data: { mime_type: cleanMime, data: audio } }
+                ]
+              }
+            ],
+            generationConfig: { responseMimeType: "application/json" }
+          })
+        }
+      );
+
+      const data = await response.json();
+      if (response.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        const result = JSON.parse(data.candidates[0].content.parts[0].text);
+        return res.status(200).json(result);
       }
-    );
 
-    const data = await response.json();
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.error?.message || "Gemini API Error" });
+      lastError = data.error?.message || `Error ${response.status}`;
     }
 
-    const rawText = data.candidates[0].content.parts[0].text;
-    const result = JSON.parse(rawText);
-    return res.status(200).json(result);
+    return res.status(503).json({ error: lastError });
   } catch (err) {
     return res.status(500).json({ error: err.message || "Server error" });
   }

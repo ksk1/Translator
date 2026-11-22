@@ -200,7 +200,7 @@
         try {
           result = JSON.parse(rawResponse);
         } catch {
-          throw new Error(`Server returned (${response.status}): ${rawResponse.slice(0, 120)}`);
+          throw new Error(`Server (${response.status}): ${rawResponse.slice(0, 120)}`);
         }
 
         if (!response.ok) {
@@ -208,7 +208,7 @@
         }
 
         addCard(result.detected, result.original, result.translated);
-        statusEl.textContent = "Done! Tap the mic to speak again.";
+        statusEl.textContent = "Done! Tap to speak again.";
         statusEl.className = "";
       } catch (err) {
         statusEl.textContent = "Error: " + err.message;
@@ -223,14 +223,17 @@
       }
 
       try {
-        currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioChunks = [];
+        // Request mic permission ONCE and reuse the stream
+        if (!currentStream || !currentStream.active) {
+          currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
 
-        let options = {};
+        audioChunks = [];
+        let options = { audioBitsPerSecond: 32000 };
         if (MediaRecorder.isTypeSupported("audio/mp4")) {
-          options = { mimeType: "audio/mp4" };
+          options.mimeType = "audio/mp4";
         } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
-          options = { mimeType: "audio/webm;codecs=opus" };
+          options.mimeType = "audio/webm;codecs=opus";
         }
 
         mediaRecorder = new MediaRecorder(currentStream, options);
@@ -243,7 +246,6 @@
           isRecording = false;
           micBtn.classList.remove("recording");
           micLabel.textContent = "🎙️ Tap to Speak";
-          currentStream.getTracks().forEach(track => track.stop());
 
           const mime = mediaRecorder.mimeType || options.mimeType || "audio/mp4";
           const audioBlob = new Blob(audioChunks, { type: mime });
@@ -254,7 +256,7 @@
         isRecording = true;
         micBtn.classList.add("recording");
         micLabel.textContent = "⏹️ Tap to Stop & Translate";
-        statusEl.textContent = "Recording... Speak Tamil or Chinese now";
+        statusEl.textContent = "Recording... Speak now";
         statusEl.className = "recording";
       } catch (err) {
         statusEl.textContent = "Mic error: " + err.message;
