@@ -34,6 +34,7 @@
       background: #1e293b;
       color: #94a3b8;
       border-bottom: 1px solid #334155;
+      word-break: break-word;
     }
     #status.recording { background: #7f1d1d; color: #fecaca; font-weight: 600; }
     #status.loading { background: #1e3a8a; color: #bfdbfe; font-weight: 600; }
@@ -194,7 +195,14 @@
           })
         });
 
-        const result = await response.json();
+        const rawResponse = await response.text();
+        let result;
+        try {
+          result = JSON.parse(rawResponse);
+        } catch {
+          throw new Error(`Server returned (${response.status}): ${rawResponse.slice(0, 120)}`);
+        }
+
         if (!response.ok) {
           throw new Error(result.error || "Translation failed");
         }
