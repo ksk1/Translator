@@ -223,7 +223,6 @@
       }
 
       try {
-        // Request mic permission ONCE and reuse the stream
         if (!currentStream || !currentStream.active) {
           currentStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         }
@@ -265,6 +264,18 @@
     }
 
     micBtn.addEventListener("click", toggleRecording);
+
+    function releaseMic() {
+      if (isRecording && mediaRecorder) mediaRecorder.stop();
+      if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+      }
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) releaseMic();
+    });
+    window.addEventListener("pagehide", releaseMic);
   </script>
 </body>
 </html>

@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
 
     const prompt = `Detect if audio is Tamil or Chinese. Transcribe accurately. If Tamil, translate to natural ${targetDialect}. If Chinese, translate to natural spoken Tamil. Return ONLY JSON: {"detected":"ta"|"zh","original":"...","translated":"..."}`;
 
-    const models = ["gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-2.5-flash-lite"];
+    const models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
     let lastError = "Translation failed";
 
     for (const model of models) {
